@@ -1,0 +1,59 @@
+name: Deploy Fachverfahren (Zero-Downtime Rolling Update)
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      tariff_year:
+        description: "Active tax assessment year (APP_TARIFF_YEAR)"
+        required: true
+        default: "2026"
+      app_version:
+        description: "Application release version (APP_VERSION)"
+        required: true
+        default: "1.0.0"
+
+jobs:
+  rollout-fachverfahren:
+    name: Build, Harden & Rollout to Rechenzentrum
+    runs-on: [self-hosted, linux, proxmox-staging]
+    timeout-minutes: 3
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Validate Kubernetes manifests and security constraints
+        run: |
+          grep -q "runAsNonRoot: true" k8s/deployment.yaml
+          grep -q "readOnlyRootFilesystem: true" k8s/deployment.yaml
+          chmod +x ops/scripts/verify-readiness.sh
+
+      - name: Apply ConfigMap update and trigger zero-downtime rolling update
+        env:
+          TARGET_TARIFF_YEAR: ${{ inputs.tariff_year || '2026' }}
+          TARGET_APP_VERSION: ${{ inputs.app_version || '1.0.0' }}
+        run: |
+          kubectl apply -f k8s/namespace.yaml
+          kubectl create configmap steuer-pruefdienst-config \
+            --namespace=fachverfahren-steuer \
+            --from-literal=APP_TARIFF_YEAR="${TARGET_TARIFF_YEAR}" \
+            --from-literal=APP_VERSION="${TARGET_APP_VERSION}" \
+            --from-literal=APP_ENV="production-rechenzentrum" \
+            --from-literal=MAINTENANCE_MODE="false" \
+            --dry-run=client -o yaml | kubectl apply -f -
+          kubectl apply -f k8s/deployment.yaml
+          kubectl apply -f k8s/service.yaml
+          kubectl apply -f k8s/networkpolicy.yaml
+          kubectl rollout restart deployment/steuer-pruefdienst -n fachverfahren-steuer
+
+      - name: Wait for Readiness Probe & verify Betriebsbereitschaft (Auto-Rollback on failure)
+        env:
+          TARGET_TARIFF_YEAR: ${{ inputs.tariff_year || '2026' }}
+        run: |
+          if ! kubectl rollout status deployment/steuer-pruefdienst -n fachverfahren-steuer --timeout=45s; then
+            echo "ERROR: Rollout failed readiness gate - executing automatic rollback..."
+            kubectl rollout undo deployment/steuer-pruefdienst -n fachverfahren-steuer
+            exit 1
+          fi
+          ./ops/scripts/verify-readiness.sh "http://127.0.0.1:8080" "http://127.0.0.1:9990" "${TARGET_TARIFF_YEAR}"

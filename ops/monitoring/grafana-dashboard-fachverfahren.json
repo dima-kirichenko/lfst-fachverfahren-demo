@@ -1,0 +1,46 @@
+{
+  "title": "LfSt Fachverfahren Steuer - Betriebsbereitschaft & WildFly / JBoss EAP",
+  "uid": "lfst-fachverfahren-id244",
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "10s",
+  "panels": [
+    {
+      "id": 1,
+      "title": "Betriebsbereitschaft Applikationsserver (UP / DOWN)",
+      "type": "stat",
+      "gridPos": { "h": 6, "w": 8, "x": 0, "y": 0 },
+      "targets": [
+        {
+          "expr": "up{job=\"wildfly-fachverfahren-steuer\"}",
+          "legendFormat": "{{instance}}"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "WildFly JVM Heap-Auslastung (%)",
+      "type": "gauge",
+      "gridPos": { "h": 6, "w": 8, "x": 8, "y": 0 },
+      "targets": [
+        {
+          "expr": "100 * (jvm_memory_used_bytes{area=\"heap\"} / jvm_memory_max_bytes{area=\"heap\"})",
+          "legendFormat": "Heap {{instance}}"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "Undertow Aktive Sitzungen & Requests",
+      "type": "timeseries",
+      "gridPos": { "h": 6, "w": 8, "x": 16, "y": 0 },
+      "targets": [
+        {
+          "expr": "rate(vendor_undertow_request_count_total[1m])",
+          "legendFormat": "Requests/s {{instance}}"
+        }
+      ]
+    }
+  ]
+}

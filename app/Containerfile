@@ -1,0 +1,35 @@
+# Stage 1: Build Jakarta EE 10 WAR artifact
+FROM maven:3.9.9-eclipse-temurin-21 AS builder
+WORKDIR /build
+COPY pom.xml .
+RUN mvn dependency:go-offline -B
+COPY src ./src
+RUN mvn clean package -DskipTests -B
+
+# Stage 2: Hardened WildFly 31 runtime (upstream of Red Hat JBoss EAP 8)
+FROM quay.io/wildfly/wildfly:31.0.1.Final-jdk21
+
+USER root
+
+# Copy and execute JBoss CLI hardening script at build time
+COPY wildfly/harden-standalone.cli /opt/jboss/wildfly/bin/harden-standalone.cli
+RUN /opt/jboss/wildfly/bin/jboss-cli.sh --file=/opt/jboss/wildfly/bin/harden-standalone.cli && \
+    rm -rf /opt/jboss/wildfly/standalone/configuration/standalone_xml_history \
+           /opt/jboss/wildfly/welcome-content \
+           /opt/jboss/wildfly/bin/harden-standalone.cli
+
+# Deploy immutable WAR artifact
+COPY --from=builder /build/target/ROOT.war /opt/jboss/wildfly/standalone/deployments/ROOT.war
+
+# OpenShift & restricted Kubernetes compatibility:
+# Ensure UID 10001 and GID 0 (root group for arbitrary OpenShift UIDs) own runtime directories
+RUN chown -R 10001:0 /opt/jboss/wildfly && \
+    chmod -R g=u /opt/jboss/wildfly/standalone
+
+USER 10001:0
+
+EXPOSE 8080 9990
+
+ENV JAVA_OPTS="-XX:MaxRAMPercentage=75.0 -Djava.net.preferIPv4Stack=true -Djboss.bind.address=0.0.0.0 -Djboss.bind.address.management=0.0.0.0"
+
+CMD ["/opt/jboss/wildfly/bin/standalone.sh", "-c", "standalone.xml"]

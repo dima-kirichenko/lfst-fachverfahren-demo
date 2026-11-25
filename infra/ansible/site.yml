@@ -1,0 +1,11 @@
+---
+- name: Harden Linux Base System and Provision Container Platform for Fachverfahren
+  hosts: fachverfahren_nodes
+  become: true
+  vars:
+    allowed_app_port: 8080
+    allowed_ssh_port: 22
+    k3s_namespace: fachverfahren-steuer
+  roles:
+    - role: linux_hardening
+    - role: container_runtime

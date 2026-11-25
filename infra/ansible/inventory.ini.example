@@ -1,0 +1,9 @@
+[staging_proxmox]
+lfst-staging-runner ansible_host=192.168.178.244 ansible_user=opsadmin
+
+[prod_rechenzentrum]
+lfst-rz-arm01 ansible_host=203.0.113.244 ansible_user=ubuntu
+
+[fachverfahren_nodes:children]
+staging_proxmox
+prod_rechenzentrum

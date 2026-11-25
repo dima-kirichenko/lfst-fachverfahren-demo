@@ -1,0 +1,97 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: steuer-pruefdienst
+  namespace: fachverfahren-steuer
+  labels:
+    app.kubernetes.io/name: steuer-pruefdienst
+    app.kubernetes.io/component: application-server
+spec:
+  replicas: 2
+  revisionHistoryLimit: 5
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: steuer-pruefdienst
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: steuer-pruefdienst
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9990"
+        prometheus.io/path: "/metrics"
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 0
+        fsGroup: 0
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: wildfly-app
+          image: localhost/lfst-steuer-pruefdienst:1.0.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http-app
+              containerPort: 8080
+              protocol: TCP
+            - name: http-mgmt
+              containerPort: 9990
+              protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: steuer-pruefdienst-config
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          resources:
+            requests:
+              cpu: "250m"
+              memory: "512Mi"
+            limits:
+              cpu: "1000m"
+              memory: "1024Mi"
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: 9990
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            timeoutSeconds: 2
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /health/live
+              port: 9990
+            initialDelaySeconds: 20
+            periodSeconds: 10
+            timeoutSeconds: 2
+            failureThreshold: 3
+          volumeMounts:
+            - name: wildfly-tmp
+              mountPath: /opt/jboss/wildfly/standalone/tmp
+            - name: wildfly-log
+              mountPath: /opt/jboss/wildfly/standalone/log
+            - name: wildfly-data
+              mountPath: /opt/jboss/wildfly/standalone/data
+      volumes:
+        - name: wildfly-tmp
+          emptyDir:
+            medium: Memory
+            sizeLimit: 64Mi
+        - name: wildfly-log
+          emptyDir:
+            sizeLimit: 128Mi
+        - name: wildfly-data
+          emptyDir:
+            sizeLimit: 128Mi

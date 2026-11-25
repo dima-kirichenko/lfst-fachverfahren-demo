@@ -1,0 +1,61 @@
+---
+- name: Ensure auditd and firewall packages are installed
+  ansible.builtin.package:
+    name:
+      - auditd
+      - fail2ban
+      - curl
+    state: present
+
+- name: Harden SSH daemon configuration (Key-Only, No Root Login)
+  ansible.builtin.lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: "{{ item.regexp }}"
+    line: "{{ item.line }}"
+    state: present
+    validate: "/usr/sbin/sshd -t -f %s"
+  loop:
+    - { regexp: "^#?PermitRootLogin", line: "PermitRootLogin no" }
+    - { regexp: "^#?PasswordAuthentication", line: "PasswordAuthentication no" }
+    - { regexp: "^#?KbdInteractiveAuthentication", line: "KbdInteractiveAuthentication no" }
+    - { regexp: "^#?X11Forwarding", line: "X11Forwarding no" }
+    - { regexp: "^#?MaxAuthTries", line: "MaxAuthTries 3" }
+
+- name: Apply kernel sysctl security baseline parameters
+  ansible.posix.sysctl:
+    name: "{{ item.key }}"
+    value: "{{ item.value }}"
+    sysctl_set: true
+    state: present
+    reload: true
+  loop:
+    - { key: "net.ipv4.tcp_syncookies", value: "1" }
+    - { key: "net.ipv4.conf.all.accept_redirects", value: "0" }
+    - { key: "net.ipv4.conf.all.send_redirects", value: "0" }
+    - { key: "net.ipv4.conf.all.rp_filter", value: "1" }
+    - { key: "kernel.randomize_va_space", value: "2" }
+    - { key: "fs.protected_hardlinks", value: "1" }
+    - { key: "fs.protected_symlinks", value: "1" }
+
+- name: Ensure auditd service is enabled and active
+  ansible.builtin.service:
+    name: auditd
+    enabled: true
+    state: started
+
+- name: Register RHEL 9 node via Red Hat Developer Subscription (SKU RH00798)
+  community.general.redhat_subscription:
+    state: present
+    activationkey: "{{ rhsm_activation_key | default(omit) }}"
+    org_id: "{{ rhsm_org_id | default('11925553') }}"
+    auto_attach: true
+  when:
+    - ansible_os_family == "RedHat"
+    - rhsm_activation_key is defined
+
+- name: Enforce SELinux targeted policy on RHEL / Enterprise Linux nodes
+  ansible.posix.selinux:
+    policy: targeted
+    state: enforcing
+  when: ansible_os_family == "RedHat"
+

@@ -1,0 +1,30 @@
+# Build artifacts
+target/
+*.war
+*.jar
+*.class
+
+# OpenTofu / Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+crash.log
+*.tfvars
+!*.tfvars.example
+override.tf
+override.tf.json
+
+# Ansible
+infra/ansible/inventory.ini
+*.retry
+
+# Kubernetes secrets
+k8s/secret.yaml
+kubeconfig
+*.kubeconfig
+
+# IDE / OS
+.idea/
+.vscode/
+*.swp
+.DS_Store

@@ -1,0 +1,29 @@
+# JBoss CLI build-time hardening script for WildFly / JBoss EAP
+embed-server --server-config=standalone.xml --std-out=echo
+
+# 1. Remove default welcome content and sample header Filters (Information Disclosure prevention)
+/subsystem=undertow/server=default-server/host=default-host:remove-Access-log()
+if (outcome == success) of /subsystem=undertow/server=default-server/host=default-host/location=\/:read-resource
+    /subsystem=undertow/server=default-server/host=default-host/location=\/:remove()
+end-if
+if (outcome == success) of /subsystem=undertow/configuration=handler/file=welcome-content:read-resource
+    /subsystem=undertow/configuration=handler/file=welcome-content:remove()
+end-if
+if (outcome == success) of /subsystem=undertow/server=default-server/host=default-host/filter-ref=server-header:read-resource
+    /subsystem=undertow/server=default-server/host=default-host/filter-ref=server-header:remove()
+end-if
+if (outcome == success) of /subsystem=undertow/server=default-server/host=default-host/filter-ref=x-powered-by-header:read-resource
+    /subsystem=undertow/server=default-server/host=default-host/filter-ref=x-powered-by-header:remove()
+end-if
+
+# 2. Enforce strict request size limits on the public HTTP listener (DoS mitigation)
+/subsystem=undertow/server=default-server/http-listener=default:write-attribute(name=max-post-size,value=1048576)
+/subsystem=undertow/server=default-server/http-listener=default:write-attribute(name=record-request-start-time,value=true)
+
+# 3. Enable Undertow & data source statistics for Prometheus scraping on management port 9990
+/subsystem=undertow:write-attribute(name=statistics-enabled,value=true)
+
+# 4. Disable deployment scanner at runtime (immutable container artifact principle)
+/subsystem=deployment-scanner/scanner=default:write-attribute(name=scan-enabled,value=false)
+
+stop-embedded-server

@@ -1,0 +1,22 @@
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: steuer-pruefdienst
+  namespace: fachverfahren-steuer
+  labels:
+    app.kubernetes.io/name: steuer-pruefdienst
+    app.kubernetes.io/part-of: lfst-fachverfahren
+  annotations:
+    haproxy.router.openshift.io/timeout: 30s
+    haproxy.router.openshift.io/hsts_header: "max-age=31536000;includeSubDomains;preload"
+spec:
+  to:
+    kind: Service
+    name: steuer-pruefdienst
+    weight: 100
+  port:
+    targetPort: http-app
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+  wildcardPolicy: None

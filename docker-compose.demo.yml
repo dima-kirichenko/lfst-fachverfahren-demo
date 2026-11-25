@@ -1,0 +1,62 @@
+services:
+  steuer-pruefdienst:
+    build:
+      context: ./app
+      dockerfile: Containerfile
+    image: localhost/lfst-steuer-pruefdienst:1.0.0
+    container_name: lfst-steuer-pruefdienst
+    restart: unless-stopped
+    user: "10001:0"
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    environment:
+      - APP_TARIFF_YEAR=${APP_TARIFF_YEAR:-2026}
+      - APP_VERSION=${APP_VERSION:-1.0.0}
+      - APP_ENV=${APP_ENV:-production-rechenzentrum}
+      - MAINTENANCE_MODE=${MAINTENANCE_MODE:-false}
+    tmpfs:
+      - /opt/jboss/wildfly/standalone/tmp:rw,noexec,nosuid,size=64m,uid=10001,gid=0,mode=1770
+      - /opt/jboss/wildfly/standalone/log:rw,noexec,nosuid,size=64m,uid=10001,gid=0,mode=1770
+      - /opt/jboss/wildfly/standalone/data:rw,noexec,nosuid,size=64m,uid=10001,gid=0,mode=1770
+    ports:
+      - "127.0.0.1:8080:8080"
+      - "127.0.0.1:9990:9990"
+
+  prometheus:
+    image: docker.io/prom/prometheus:v2.54.1
+    container_name: lfst-prometheus
+    restart: unless-stopped
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.retention.time=15d"
+      - "--web.enable-lifecycle"
+    ports:
+      - "127.0.0.1:9090:9090"
+    volumes:
+      - ./ops/monitoring/prometheus.demo.yml:/etc/prometheus/prometheus.yml:ro
+      - ./ops/monitoring/alerts.yml:/etc/prometheus/alerts.yml:ro
+    depends_on:
+      - steuer-pruefdienst
+
+  grafana:
+    image: docker.io/grafana/grafana-oss:11.2.0
+    container_name: lfst-grafana
+    restart: unless-stopped
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=***ENTFERNT***
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Viewer
+      - GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH=/var/lib/grafana/dashboards/grafana-dashboard-fachverfahren.json
+    ports:
+      - "127.0.0.1:3000:3000"
+    volumes:
+      - ./ops/monitoring/provisioning/datasources:/etc/grafana/provisioning/datasources:ro
+      - ./ops/monitoring/provisioning/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./ops/monitoring/grafana-dashboard-fachverfahren.json:/var/lib/grafana/dashboards/grafana-dashboard-fachverfahren.json:ro
+    depends_on:
+      - prometheus

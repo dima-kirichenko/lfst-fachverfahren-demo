@@ -1,0 +1,32 @@
+groups:
+  - name: fachverfahren_steuer_betriebsbereitschaft
+    rules:
+      - alert: FachverfahrenApplikationsserverDown
+        expr: up{job="wildfly-fachverfahren-steuer"} == 0
+        for: 30s
+        labels:
+          severity: critical
+          service: steuer-pruefdienst
+        annotations:
+          summary: "WildFly Applikationsserver fuer Fachverfahren Steuer nicht erreichbar"
+          description: "Die Instanz {{ $labels.instance }} antwortet seit ueber 30 Sekunden nicht auf dem Management-Endpunkt (:9990/metrics)."
+
+      - alert: WildFlyJvmHeapUsageHigh
+        expr: (jvm_memory_used_bytes{area="heap"} / jvm_memory_max_bytes{area="heap"}) > 0.85
+        for: 2m
+        labels:
+          severity: warning
+          service: steuer-pruefdienst
+        annotations:
+          summary: "Hohe JVM-Heap-Auslastung (> 85%) auf WildFly Applikationsserver"
+          description: "Der JVM-Heap der Instanz {{ $labels.instance }} liegt seit 2 Minuten ueber 85 Prozent."
+
+      - alert: FachverfahrenHighErrorRate
+        expr: rate(vendor_undertow_error_count_total[5m]) > 0.5
+        for: 1m
+        labels:
+          severity: critical
+          service: steuer-pruefdienst
+        annotations:
+          summary: "Erhoehte HTTP-5xx-Fehlerrate im Fachverfahren Steuer"
+          description: "Im Undertow-Subsystem von {{ $labels.instance }} treten vermehrt Serverfehler auf."

@@ -1,0 +1,26 @@
+---
+- name: Install rootless Podman and container tools for local verification
+  ansible.builtin.package:
+    name:
+      - podman
+      - uidmap
+      - slirp4netns
+    state: present
+
+- name: Check if k3s binary is already installed
+  ansible.builtin.stat:
+    path: /usr/local/bin/k3s
+  register: k3s_binary
+
+- name: Install lightweight Kubernetes (k3s) with secrets encryption enabled
+  ansible.builtin.shell: |
+    curl -sfL https://get.k3s.io | INSTALL_K3S_EXEC="server --secrets-encryption --write-kubeconfig-mode 0600" sh -
+  args:
+    creates: /usr/local/bin/k3s
+  when: not k3s_binary.stat.exists
+
+- name: Ensure k3s service is active and enabled on boot
+  ansible.builtin.service:
+    name: k3s
+    enabled: true
+    state: started

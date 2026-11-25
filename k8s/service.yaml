@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: steuer-pruefdienst
+  namespace: fachverfahren-steuer
+  labels:
+    app.kubernetes.io/name: steuer-pruefdienst
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: steuer-pruefdienst
+  ports:
+    - name: http-app
+      port: 8080
+      targetPort: http-app
+      protocol: TCP
+    - name: http-mgmt
+      port: 9990
+      targetPort: http-mgmt
+      protocol: TCP

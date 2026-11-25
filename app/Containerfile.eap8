@@ -1,0 +1,36 @@
+# Stage 1: Build Jakarta EE 10 WAR artifact on Red Hat UBI 9 OpenJDK 21
+FROM registry.access.redhat.com/ubi9/openjdk-21:1.20 AS builder
+USER root
+WORKDIR /build
+COPY pom.xml .
+RUN mvn dependency:go-offline -B
+COPY src ./src
+RUN mvn clean package -DskipTests -B
+
+# Stage 2: Official Red Hat JBoss Enterprise Application Platform 8.0 on RHEL 9
+# Requires: podman login registry.redhat.io (via Red Hat Developer Subscription SKU RH00798)
+FROM registry.redhat.io/jboss-eap-8/eap80-openjdk21-runtime-openshift-rhel9:latest
+
+USER root
+
+# Copy and execute JBoss EAP 8 CLI build-time hardening script
+COPY wildfly/harden-standalone.cli ${JBOSS_HOME}/bin/harden-standalone.cli
+RUN ${JBOSS_HOME}/bin/jboss-cli.sh --file=${JBOSS_HOME}/bin/harden-standalone.cli && \
+    rm -rf ${JBOSS_HOME}/standalone/configuration/standalone_xml_history \
+           ${JBOSS_HOME}/welcome-content \
+           ${JBOSS_HOME}/bin/harden-standalone.cli
+
+# Deploy immutable WAR artifact
+COPY --from=builder /build/target/ROOT.war ${JBOSS_HOME}/standalone/deployments/ROOT.war
+
+# Enforce OpenShift restricted-v2 SCC permissions (UID 10001, GID 0)
+RUN chown -R 10001:0 ${JBOSS_HOME} && \
+    chmod -R g=u ${JBOSS_HOME}/standalone
+
+USER 10001:0
+
+EXPOSE 8080 9990
+
+ENV JAVA_OPTS_APPEND="-XX:MaxRAMPercentage=75.0 -Djava.net.preferIPv4Stack=true"
+
+CMD ["/opt/eap/bin/openshift-launch.sh"]
