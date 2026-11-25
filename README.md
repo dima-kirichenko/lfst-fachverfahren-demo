@@ -88,6 +88,10 @@ Mit dem Startskript wird die Jakarta-EE-Anwendung gebaut, der gehärtete WildFly
 ```nu
 cd /home/dima/Documents/lfst-fachverfahren-demo
 
+# 0. Einmalig: Admin-Passwort fuer Grafana in .env hinterlegen (nie committen)
+cp .env.example .env
+# GF_SECURITY_ADMIN_PASSWORD in .env setzen, z.B. mit: openssl rand -base64 24
+
 # 1. Gesamten Demo-Stack bauen, starten und automatisch verifizieren
 bash ops/scripts/demo-up.sh
 
