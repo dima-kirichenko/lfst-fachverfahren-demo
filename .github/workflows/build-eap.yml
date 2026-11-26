@@ -1,0 +1,36 @@
+name: Build EAP Image (Red Hat JBoss EAP 8)
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "app/**"
+      - ".github/workflows/build-eap.yml"
+
+jobs:
+  build-eap:
+    name: Build Hardened JBoss EAP 8 Image
+    runs-on: [self-hosted, linux, proxmox-staging]
+    timeout-minutes: 20
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Login to Red Hat Registry (service account, masked)
+        run: |
+          echo "${{ secrets.REGISTRY_PASSWORD }}" | podman login --username "${{ secrets.REGISTRY_USERNAME }}" --password-stdin registry.redhat.io
+
+      - name: Build hardened JBoss EAP 8 image (no push, local verify)
+        working-directory: app
+        run: |
+          podman build -t localhost/lfst-steuer-pruefdienst-eap8:ci -f Containerfile.eap8 .
+          podman image exists localhost/lfst-steuer-pruefdienst-eap8:ci
+
+      - name: Verify JBoss CLI hardening markers
+        run: |
+          podman run --rm localhost/lfst-steuer-pruefdienst-eap8:ci \
+            test ! -d /opt/eap/welcome-content && echo "HARDENING OK: no welcome content"
+
+      - name: Logout from Red Hat Registry
+        if: always()
+        run: podman logout registry.redhat.io || true
