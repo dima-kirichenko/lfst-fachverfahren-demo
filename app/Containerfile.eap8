@@ -17,8 +17,11 @@ RUN mvn -Peap clean package -DskipTests -B
 # Diagnose: Wo liegt der provisionierte Server? (steht im Build-Log)
 RUN echo "=== EAP PROVISIONING RESULT ===" && ls -la /build/target/ && test -d /build/target/server && echo "SERVER DIR OK: /build/target/server"
 
-# Stage 2: Gehärtetes Laufzeit-Image auf UBI 9 minimal (Registry-Login noetig)
-FROM registry.redhat.io/ubi9/ubi-minimal:latest
+# Stage 2: Gehärtetes Laufzeit-Image auf UBI 9 + OpenJDK 21 Runtime
+# (oeffentlich, kein Registry-Login noetig; der Service-Account-Login im
+# Workflow bleibt als Berechtigungsnachweis und fuer kuenftige
+# registry.redhat.io-Basen bestehen)
+FROM registry.access.redhat.com/ubi9/openjdk-21-runtime:1.20
 
 USER root
 
