@@ -1,8 +1,8 @@
 # JBoss CLI build-time hardening script for WildFly / JBoss EAP
 embed-server --server-config=standalone.xml --std-out=echo
 
-# 1. Remove default welcome content and sample header Filters (Information Disclosure prevention)
-/subsystem=undertow/server=default-server/host=default-host:remove-Access-log()
+# 1. Access-Log bewusst BEIBEHALTEN (Revisionssicherheit im Behoerdenbetrieb).
+#    Standard-Welcome-Content und verraeterische Server-Header entfernen:
 if (outcome == success) of /subsystem=undertow/server=default-server/host=default-host/location=\/:read-resource
     /subsystem=undertow/server=default-server/host=default-host/location=\/:remove()
 end-if
