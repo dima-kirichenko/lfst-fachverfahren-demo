@@ -75,11 +75,18 @@ vga=normal fb=false ipv6.disable=1 nvme_core.default_ps_max_latency_us=0`)
 → Preseed (deutsch, DHCP, atomic auf nvme0n1, SSH-Server + Keys per `late_command`
 von `:8000/keys/authorized_keys`) → Reboot → Debian 13 mit SSH.
 
-## 6. Offene Schritte (Stand 28.11. früh)
+## 6. Erledigt (28.11., verifiziert)
 
-- [ ] Statische `.29` auf pve-dell (derzeit DHCP, zuletzt `.52`)
-- [ ] Härten wie N150 (`docs/host-haertung-pve-n150.md` als Vorlage)
-- [ ] Proxmox VE 9 auf Debian (offizielle Anleitung) + in Ansible aufnehmen
-      (`infra/ansible/` hat noch keine Proxmox-Rolle)
-- [ ] Nochmals ePSA-Speichertest gründlich (M.2-Gesundheit langfristig)
-- [ ] iVentoy-Default liegt auf `debian-auto` — vor Reboots prüfen, kein Reinstall-Loop
+- [x] Statische `.29` (`/etc/network/interfaces`, DHCP-Rest per Reboot weg)
+- [x] Debian-Härten: `unattended-upgrades` + `fail2ban`, SSH key-only
+      (`PermitRootLogin prohibit-password`, `PasswordAuthentication no`)
+- [x] Proxmox VE 9.3.1 auf Debian trixie (Kernel `7.0.14-30-pve`, UI `:8006` = 200)
+- [x] Deckel-Verhalten: `HandleLidSwitch*=ignore` (bleibt wach bei Deckel zu)
+- [x] PVE-Firewall (DC + Node an; ACCEPT 22/8006 aus LAN; SSH+UI danach verifiziert)
+- [x] API: Rolle `TofuProvisioner` + User `tofu@pve` + Token `automation`
+      (unbefristet, privsep 0; Secret in `infra/tofu/terraform.dell.tfvars`, gitignoriert)
+- [x] Ansible-Inventar: `[dell_proxmox]` mit `pve-dell` (ansible als root)
+- [ ] Backup-Job: entfällt (keine VMs/kein Storage auf dem Dell)
+- [ ] Tofu-Provider für Dell: bewusst nicht verdrahtet (keine VMs geplant)
+- [ ] Proxmox-8.4-Fallback-ISO in `/tmp` kann weg (ungenutzt, 1,6 GB)
+- [ ] ePSA-Speichertest gründlich für M.2-Langzeitbefund (optional)
