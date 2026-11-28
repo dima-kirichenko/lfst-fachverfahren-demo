@@ -65,6 +65,10 @@ Echte Werte: gitignorierte lokale Dateien + Kickstart unter `/tmp` (nicht im Rep
    `rhocp-4.22-for-rhel-9` + `fast-datapath-for-rhel-9`. Workaround mit
    händischen RHEL-9-Repo-Dateien auf RHEL 10 existiert (Doku „Known issues"),
    aber unsupportet und abhängigkeitsriskant → verworfen.
+   **Verifiziert 28.11.:** `microshift* 4.22.20 el9` liegt im RHEL-9-Pfad
+   (`…/layered/rhel9/x86_64/rhocp/4.22/os`) und ist mit unserer Berechtigung
+   lesbar (temporäre Prüf-Repo-Datei, danach wieder gelöscht). RHEL-9.9-Plan
+   damit freigegeben.
 9. **Volume Group voll:** `autopart` verplant alles (root 70 + swap 7,8 +
    home 158,1 GB, **0 frei**). MicroShift-LVMS braucht *freien* VG-Platz.
    Neuinstall-Plan (~236 GB nutzbar): root 40 G, swap 8 G, home 150 G,
